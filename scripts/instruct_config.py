@@ -13,7 +13,7 @@ FIXED_BS_CONFIG = {
 
 INSTRUCT_CONFIG = {
     "0_1_b": {
-        "lr": 1e-4,
+        "lr": 8e-5,
         "distributed": "ddp",
         "gpu_count": 1,
         "batch_size": 4,
@@ -21,7 +21,7 @@ INSTRUCT_CONFIG = {
         "use_lora": False
     },
     "1_2_b": {
-        "lr": 8.5e-5,
+        "lr": 7e-5,
         "distributed": "ddp",
         "gpu_count": 1,
         "use_lora": False,
@@ -29,56 +29,56 @@ INSTRUCT_CONFIG = {
         "batch_size": 2,
     },
     "2_4_b": {
-        "lr": 7e-5,
+        "lr": 6e-5,
         "distributed": "ddp",
         "gpu_count": 1,
         "gradient_accumulation_steps":16,
         "batch_size": 2,
     },
     "4_5_b": {
-        "lr": 6e-5,
-        "distributed": "ddp",
-        "gpu_count": 2,
-        "gradient_accumulation_steps":16,
-        "batch_size": 1,
-    },
-    "5_9_b": {
         "lr": 5e-5,
         "distributed": "ddp",
         "gpu_count": 2,
         "gradient_accumulation_steps":16,
         "batch_size": 1,
     },
-    "9_12_b": {
+    "5_9_b": {
         "lr": 4e-5,
         "distributed": "ddp",
         "gpu_count": 2,
+        "gradient_accumulation_steps":16,
+        "batch_size": 1,
+    },
+    "9_12_b": {
+        "lr": 1.5e-5,
+        "distributed": "ddp",
+        "gpu_count": 2,
+        "use_lora": True,
+        "gradient_accumulation_steps":32,
+        "batch_size": 1,
+    },
+    "12_15_b": {
+        "lr": 1e-5,
+        "distributed": "ds",
+        "gpu_count": 4,
         "use_lora": True,
         "gradient_accumulation_steps":16,
         "batch_size": 1,
     },
-    "12_15_b": {
-        "lr": 3e-5,
-        "distributed": "ds",
-        "gpu_count": 4,
-        "use_lora": True,
-        "gradient_accumulation_steps":8,
-        "batch_size": 1,
-    },
     "15_40_b": {
-        "lr": 2e-5,
+        "lr": 7e-6,
         "distributed": "ds",
         "gpu_count": 4,
         "use_lora": True,
-        "gradient_accumulation_steps":8,
+        "gradient_accumulation_steps":16,
         "batch_size": 1,
     },
     "40_80_b": {
-        "lr": 1e-5,
+        "lr": 5e-6,
         "distributed": "ds",
         "gpu_count": 8,
         "use_lora": True,
-        "gradient_accumulation_steps":4,
+        "gradient_accumulation_steps":8,
         "batch_size": 1,
     }        
 }
@@ -210,36 +210,36 @@ def get_training_json(train_info: dict) -> dict:
     # if run_config["disable_fa"]: # if FA is not usable
     #     run_config["batch_size"] = run_config["batch_size"] * 2
 
-    if model_name in FIXED_BS_CONFIG:
-        run_config["batch_size"] = FIXED_BS_CONFIG[model_name]["batch_size"]
+    # if model_name in FIXED_BS_CONFIG:
+    #     run_config["batch_size"] = FIXED_BS_CONFIG[model_name]["batch_size"]
     
-    if model_architecture.strip().lower() in [
-        "gptneoxforcausallm",
-        "gptjforcausallm",
-        "phiforcausallm",
-        "falconforcausallm",
-    ]:
-        run_config["batch_size"] = int(run_config["batch_size"] // 2)
-        if model_name == "EleutherAI/pythia-160m":  # reduce more
-            run_config["batch_size"] = int(run_config["batch_size"] / 1.5)
-        elif "pythia" in model_name.lower():
-            run_config["batch_size"] = int(run_config["batch_size"] / 1.8)
+    # if model_architecture.strip().lower() in [
+    #     "gptneoxforcausallm",
+    #     "gptjforcausallm",
+    #     "phiforcausallm",
+    #     "falconforcausallm",
+    # ]:
+    #     run_config["batch_size"] = int(run_config["batch_size"] // 2)
+    #     if model_name == "EleutherAI/pythia-160m":  # reduce more
+    #         run_config["batch_size"] = int(run_config["batch_size"] / 1.5)
+    #     elif "pythia" in model_name.lower():
+    #         run_config["batch_size"] = int(run_config["batch_size"] / 1.8)
     
-    if (
-        model_name in ["microsoft/phi-2", "microsoft/phi-1_5"]
-    ): 
-        run_config["batch_size"] = int(run_config["batch_size"] / 4)
+    # if (
+    #     model_name in ["microsoft/phi-2", "microsoft/phi-1_5"]
+    # ): 
+    #     run_config["batch_size"] = int(run_config["batch_size"] / 4)
     
-    if "bloom-560m" in model_name or "bloomz-560m" in model_name:
-        run_config["batch_size"] = 8
+    # if "bloom-560m" in model_name or "bloomz-560m" in model_name:
+    #     run_config["batch_size"] = 8
     
-    if model_name == "mistralai/Mistral-7B-v0.1":
-        run_config["batch_size"] = int(3 * run_config["batch_size"] / 4)
+    # if model_name == "mistralai/Mistral-7B-v0.1":
+    #     run_config["batch_size"] = int(3 * run_config["batch_size"] / 4)
     
-    if "falcon" in model_name.lower():
-        run_config["batch_size"] = int(run_config["batch_size"] / 2)
+    # if "falcon" in model_name.lower():
+    #     run_config["batch_size"] = int(run_config["batch_size"] / 2)
     
-    run_config["gradient_accumulation_steps"] = int(32 // run_config["batch_size"])
+    # run_config["gradient_accumulation_steps"] = int(32 // run_config["batch_size"])
     # data_per_step = run_config["batch_size"] * run_config["gpu_nums"]
     # if data_per_step >= 64:
     #     run_config["gradient_accumulation_steps"] = 1
