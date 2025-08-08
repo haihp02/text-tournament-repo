@@ -13,64 +13,73 @@ FIXED_BS_CONFIG = {
 
 INSTRUCT_CONFIG = {
     "0_1_b": {
-        "lr": 0.0001,
+        "lr": 1e-4,
         "distributed": "ddp",
         "gpu_count": 1,
-        "batch_size": 140,
+        "batch_size": 4,
+        "gradient_accumulation_steps":8,
         "use_lora": False
     },
     "1_2_b": {
-        "lr": 0.0001,
+        "lr": 8.5e-5,
         "distributed": "ddp",
         "gpu_count": 1,
         "use_lora": False,
-        "batch_size": 100,
+        "gradient_accumulation_steps":16,
+        "batch_size": 2,
     },
     "2_4_b": {
-        "lr": 7.5e-5,
-        "distributed": "ddp",
-        "gpu_count": 1,
-        "batch_size": 48,
-    },
-    "4_5_b": {
         "lr": 7e-5,
         "distributed": "ddp",
+        "gpu_count": 1,
+        "gradient_accumulation_steps":16,
+        "batch_size": 2,
+    },
+    "4_5_b": {
+        "lr": 6e-5,
+        "distributed": "ddp",
         "gpu_count": 2,
-        "batch_size": 40,
+        "gradient_accumulation_steps":16,
+        "batch_size": 1,
     },
     "5_9_b": {
-        "lr": 3.5e-5,
+        "lr": 5e-5,
         "distributed": "ddp",
         "gpu_count": 2,
-        "batch_size": 28,
+        "gradient_accumulation_steps":16,
+        "batch_size": 1,
     },
     "9_12_b": {
-        "lr": 1e-4,
+        "lr": 4e-5,
         "distributed": "ddp",
         "gpu_count": 2,
         "use_lora": True,
-        "batch_size": 32,
+        "gradient_accumulation_steps":16,
+        "batch_size": 1,
     },
     "12_15_b": {
-        "lr": 1e-4,
+        "lr": 3e-5,
         "distributed": "ds",
         "gpu_count": 4,
         "use_lora": True,
-        "batch_size": 30,
+        "gradient_accumulation_steps":8,
+        "batch_size": 1,
     },
     "15_40_b": {
-        "lr": 8e-5,
+        "lr": 2e-5,
         "distributed": "ds",
         "gpu_count": 4,
         "use_lora": True,
-        "batch_size": 18,
+        "gradient_accumulation_steps":8,
+        "batch_size": 1,
     },
     "40_80_b": {
-        "lr": 8e-5,
+        "lr": 1e-5,
         "distributed": "ds",
         "gpu_count": 8,
         "use_lora": True,
-        "batch_size": 8,
+        "gradient_accumulation_steps":4,
+        "batch_size": 1,
     }        
 }
 
@@ -194,7 +203,7 @@ def get_training_json(train_info: dict) -> dict:
         "request_path": train_info["request_path"],
         "distributed": config.get("distributed", "ddp"),
         "gradient_checkpointing": "True",
-        "gradient_accumulation_steps": 4
+        "gradient_accumulation_steps": config.get("gradient_accumulation_steps", 1)
     }
     # data_size = get_data_size(train_info["request_path"])
     
@@ -230,12 +239,14 @@ def get_training_json(train_info: dict) -> dict:
     if "falcon" in model_name.lower():
         run_config["batch_size"] = int(run_config["batch_size"] / 2)
     
-    data_per_step = run_config["batch_size"] * run_config["gpu_nums"]
-    if data_per_step >= 64:
-        run_config["gradient_accumulation_steps"] = 1
-    else:
-        run_config["gradient_accumulation_steps"] = int(64 / data_per_step)
+    run_config["gradient_accumulation_steps"] = int(32 // run_config["batch_size"])
+    # data_per_step = run_config["batch_size"] * run_config["gpu_nums"]
+    # if data_per_step >= 64:
+    #     run_config["gradient_accumulation_steps"] = 1
+    # else:
+    #     run_config["gradient_accumulation_steps"] = int(64 / data_per_step)
     
+
     run_cmd = get_run_cmd(run_config, run_config["gpu_nums"])
     train_request = deepcopy(train_info)
     train_request["save_before_remaining_time"] = 3

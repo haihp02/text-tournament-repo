@@ -173,7 +173,7 @@ def main():
         "--max-steps", type=int, help="Max steps to use for training", default=-1
     )
     parser.add_argument(
-        "--retries", type=int, help="Number of retries", default=5
+        "--retries", type=int, help="Number of retries", default=6
     )
 
     args = parser.parse_args()
@@ -267,9 +267,14 @@ def main():
                     current_batch_size = extract_value_from_cmd(
                         train_cmd, "per_device_train_batch_size"
                     )
+                    gradient_accumulation_steps = extract_value_from_cmd(
+                        train_cmd, "gradient_accumulation_steps"
+                    )
                     current_batch_size = int(current_batch_size)
+                    current_gradient_accumulation_steps = int(gradient_accumulation_steps)
                     if current_batch_size > 1:
                         new_batch_size = current_batch_size // 2
+                        new_gradient_accumulation_steps = current_gradient_accumulation_steps * 2
                         print(
                             f"Reducing batch size from {current_batch_size} to {new_batch_size}",
                             flush=True,
@@ -279,6 +284,12 @@ def main():
                             "per_device_train_batch_size",
                             str(new_batch_size),
                         )
+                        train_cmd = replace_args_in_cmd(
+                            train_cmd,
+                            "gradient_accumulation_steps",
+                            str(new_gradient_accumulation_steps)
+                        )
+
                         print(f"New train command: {train_cmd}", flush=True)
                     else:
                         print(f"batch size is 1, cannot reduce further", flush=True)

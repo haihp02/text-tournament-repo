@@ -4,77 +4,92 @@ from copy import deepcopy
 
 DPO_CONFIG = {
     "0_1_b": {
-        "lr": 1.35e-5,
+        "lr": 5e-6,
         "distributed": "ddp",
         "gpu_count": 1,
         "batch_size": 16,
+        "gradient_checkpointing": True,
+        "gradient_accumulation_steps": 1
     },
     "1_2_b": {
-        "lr": 8.7e-6,
+        "lr": 5e-6,
         "distributed": "ddp",
         "gpu_count": 1,
-        "batch_size": 12,
+        "batch_size": 16,
+        "gradient_checkpointing": True,
+        "gradient_accumulation_steps": 1
     },
     "2_4_b": {
-        "lr": 6.5e-6,
+        "lr": 5e-6,
         "distributed": "ddp",
         "gpu_count": 2,
-        "batch_size": 12,
-        "use_lora": True
+        "batch_size": 8,
+        "use_lora": True,
+        "gradient_checkpointing": True,
+        "gradient_accumulation_steps": 1
     },
     "4_5_b": {
-        "lr": 6.25e-6,
-        "distributed": "ddp",
-        "gpu_count": 4,
-        "batch_size": 12,
-        "use_lora": True
-    },
-    "5_9_b": {
-        "lr": 7.5e-6,
+        "lr": 1e-5,
         "distributed": "ddp",
         "gpu_count": 4,
         "batch_size": 8,
-        "use_lora": True
+        "use_lora": True,
+        "gradient_checkpointing": True,
+        "gradient_accumulation_steps": 1
+    },
+    "5_9_b": {
+        "lr": 1.3e-5,
+        "distributed": "ddp",
+        "gpu_count": 4,
+        "batch_size": 8,
+        "use_lora": True,
+        "gradient_checkpointing": True,
+        "gradient_accumulation_steps": 1
     },
     "9_12_b": {
-        "lr": 5e-6,
+        "lr": 1.3e-5,
         "distributed": "ds",
         "gpu_count": 4,
         "use_lora": True,
-        "batch_size": 32,
-        "gradient_checkpointing": False
+        "batch_size": 8,
+        "gradient_checkpointing": False,
+        "gradient_accumulation_steps": 1
     },
     "12_14_b": {
-        "lr": 8.5e-6,
+        "lr": 1.5e-6,
         "distributed": "ds",
         "gpu_count": 4,
         "use_lora": True,
-        "batch_size": 24,
-        "gradient_checkpointing": False
+        "batch_size": 16,
+        "gradient_checkpointing": False,
+        "gradient_accumulation_steps": 1
     },
     "14_15_b": {
-        "lr": 8.5e-6,
-        "distributed": "ds",
-        "gpu_count": 8,
-        "use_lora": True,
-        "batch_size": 18,
-        "gradient_checkpointing": False
-    },
-    "15_40_b": {
-        "lr": 8e-6,
+        "lr": 1e-5,
         "distributed": "ds",
         "gpu_count": 8,
         "use_lora": True,
         "batch_size": 16,
-        "gradient_checkpointing": False
+        "gradient_checkpointing": False,
+        "gradient_accumulation_steps": 1
+    },
+    "15_40_b": {
+        "lr": 1e-5,
+        "distributed": "ds",
+        "gpu_count": 8,
+        "use_lora": True,
+        "batch_size": 16,
+        "gradient_checkpointing": False,
+        "gradient_accumulation_steps": 1
     },
     "40_80_b": {
-        "lr": 8e-6,
+        "lr": 1e-5,
         "distributed": "ds",
         "gpu_count": 8,
         "use_lora": True,
         "batch_size": 8,
-        "gradient_checkpointing": False
+        "gradient_checkpointing": False,
+        "gradient_accumulation_steps": 1
     }        
 }
 
@@ -111,7 +126,9 @@ def get_config(param_nums: int) -> dict:
             "distributed": "ds",
             "gpu_count": 8,
             "batch_size": 6,
-            "use_lora": True
+            "use_lora": True,
+            "gradient_checkpointing": False,
+            "gradient_accumulation_steps": 1
         }
     if param_nums < 4_000_000_000 and param_nums > 1_330_000_000:
         result["gpu_count"] = 2
@@ -158,7 +175,7 @@ def get_run_cmd(config: dict, gpu_nums: int):
     --logging_steps 5 \
     --learning_rate {learning_rate} \
     --weight_decay 0. \
-    --warmup_steps 35 \
+    --warmup_steps 50 \
     --lr_scheduler_type cosine_with_min_lr \
     --lr_scheduler_kwargs "{\\"min_lr_rate\\": {min_lr_rate}}" \
     --tf32 True \
@@ -169,7 +186,7 @@ def get_run_cmd(config: dict, gpu_nums: int):
 
     if config.get("use_lora", False):
         template += (
-            " --use_peft --lora_r 128 --lora_alpha 256 --lora_target_modules all-linear"
+            " --use_peft --lora_r 128 --lora_alpha 256 --lora_target_modules all-linear --lora_dropout 0.05"
         )
 
     if run_type == "ds":
@@ -200,15 +217,11 @@ def get_training_json(train_info: dict) -> dict:
         "request_path": train_info["request_path"],
         "distributed": config.get("distributed", "ddp"),
         "gradient_checkpointing": get_gradient_checkpointing(model_name),
-        "gradient_accumulation_steps": 1
+        "gradient_accumulation_steps": config.get("gradient_accumulation_steps", 1)
     }
     
-    if not config.get("gradient_checkpointing", True):
+    if not config.get("gradient_checkpointing"):
         run_config["gradient_checkpointing"] = False
-    
-    total_batch_size = run_config["batch_size"] * run_config["gpu_nums"]
-    if total_batch_size < 64:
-        run_config["gradient_accumulation_steps"] = min(4, int(64 / total_batch_size))
         
     run_cmd = get_run_cmd(run_config, run_config["gpu_nums"])
     train_request = deepcopy(train_info)
